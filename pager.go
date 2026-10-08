@@ -81,18 +81,29 @@ func New(total, perPage, current int) Pager {
 // least one number is left out, so a window never reads 1 … 2. With edges 0 the
 // window can open and close on a gap. Negative values count as 0.
 func (p Pager) WithWindow(edges, around int) Pager {
-	edges, around = max(0, edges), max(0, around)
+	// Clamped to [0, Last], so nothing below can overflow: every bound is then
+	// within [1-Last, 2*Last] of a page number, and Current+around is computed
+	// as a distance to Last.
+	edges = max(0, min(edges, p.Last))
+	around = max(0, min(around, p.Last))
 
-	// The candidates, as up to three sorted runs; never one entry per page, so
-	// a huge Last costs nothing.
-	runs := [3][2]int{
+	// The candidates, as up to three runs, visited in order of their starts so
+	// one cursor covers them all; never one entry per page, so a huge Last costs
+	// nothing.
+	runs := [][2]int{
 		{1, edges},
-		{p.Current - around, p.Current + around},
+		{p.Current - min(around, p.Current-1), p.Current + min(around, p.Last-p.Current)},
 		{p.Last - edges + 1, p.Last},
 	}
-	window := make([]Slot, 0, 2*edges+2*around+3)
+	if runs[2][0] < runs[1][0] {
+		runs[1], runs[2] = runs[2], runs[1]
+	}
+	window := make([]Slot, 0, min(p.Last, 64)+2)
 	prev := 0
 	for _, run := range runs {
+		if prev == p.Last { // done; prev+1 would wrap at MaxInt
+			break
+		}
 		from, to := max(run[0], prev+1, 1), min(run[1], p.Last)
 		for n := from; n <= to; n++ {
 			if n > prev+1 {
@@ -100,6 +111,9 @@ func (p Pager) WithWindow(edges, around int) Pager {
 			}
 			window = append(window, Slot{N: n, Current: n == p.Current})
 			prev = n
+			if n == to { // n++ would wrap at MaxInt
+				break
+			}
 		}
 	}
 	if prev < p.Last {

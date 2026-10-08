@@ -96,7 +96,9 @@ func PathNamed(rc *collage.RenderContext, first, rest string) (Linker, error) {
 // its address is the one without it. A key given more than once keeps its first
 // position and loses the rest.
 func Query(rc *collage.RenderContext, key string) Linker {
-	path := rc.Request.URL.Path
+	// As the request spelled it: the decoded path would turn an escaped "?" or
+	// "#" in a path parameter into the end of the path.
+	path := rc.Request.URL.EscapedPath()
 	var parts []string
 	if raw := rc.Request.URL.RawQuery; raw != "" {
 		parts = strings.Split(raw, "&")

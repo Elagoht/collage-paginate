@@ -127,3 +127,16 @@ func TestFromQuery(t *testing.T) {
 		}
 	}
 }
+
+// Query links keep the path as the request spelled it, so an escaped "?" or "#"
+// in a path parameter does not end the path early.
+func TestQuery_EscapedPath(t *testing.T) {
+	for target, want := range map[string]string{
+		"/s/a%3Fb?q=1": "/s/a%3Fb?q=1&page=2",
+		"/s/a%23b?q=1": "/s/a%23b?q=1&page=2",
+	} {
+		if got := paginate.Query(rcFor(target, nil), "page").URL(2); got != want {
+			t.Errorf("%s: URL(2) = %q, want %q", target, got, want)
+		}
+	}
+}

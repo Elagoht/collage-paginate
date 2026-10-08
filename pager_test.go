@@ -179,3 +179,63 @@ func TestItems_EmptyIsNotNil(t *testing.T) {
 		t.Fatalf("Items of an empty page = %#v, want an empty non-nil slice", got)
 	}
 }
+
+// naiveWindow is the window by its definition: every page within edges of an
+// end or around of the current one, a gap wherever numbers are skipped.
+func naiveWindow(last, current, edges, around int) string {
+	edges, around = max(0, edges), max(0, around)
+	var parts []string
+	prev := 0
+	for n := 1; n <= last; n++ {
+		if n > edges && n <= last-edges && (n < current-around || n > current+around) {
+			continue
+		}
+		if n > prev+1 {
+			parts = append(parts, "…")
+		}
+		if n == current {
+			parts = append(parts, "["+strconv.Itoa(n)+"]")
+		} else {
+			parts = append(parts, strconv.Itoa(n))
+		}
+		prev = n
+	}
+	if prev < last {
+		parts = append(parts, "…")
+	}
+	return strings.Join(parts, " ")
+}
+
+// Every window agrees with its definition, whatever edges and around are.
+func TestWindow_MatchesDefinition(t *testing.T) {
+	for last := 1; last <= 40; last++ {
+		for current := 1; current <= last; current++ {
+			for edges := -1; edges <= 6; edges++ {
+				for around := -1; around <= 6; around++ {
+					p := paginate.New(last*10, 10, current).WithWindow(edges, around)
+					if got, want := render(p.Window), naiveWindow(last, current, edges, around); got != want {
+						t.Fatalf("Last %d current %d edges %d around %d: %q, want %q", last, current, edges, around, got, want)
+					}
+				}
+			}
+		}
+	}
+}
+
+// Huge counts and windows neither loop, overflow, nor allocate per page.
+func TestWindow_Huge(t *testing.T) {
+	p := paginate.New(math.MaxInt, 1, 1)
+	if got := render(p.Window); got != "[1] 2 3 … "+strconv.Itoa(math.MaxInt) {
+		t.Errorf("New(MaxInt, 1, 1) window %q", got)
+	}
+	p = paginate.New(math.MaxInt, 1, math.MaxInt)
+	if got := render(p.Window); got != "1 … "+strconv.Itoa(math.MaxInt-2)+" "+strconv.Itoa(math.MaxInt-1)+" ["+strconv.Itoa(math.MaxInt)+"]" {
+		t.Errorf("New(MaxInt, 1, MaxInt) window %q", got)
+	}
+	if got := render(paginate.New(30, 10, 2).WithWindow(1, math.MaxInt).Window); got != "1 [2] 3" {
+		t.Errorf("around MaxInt: %q", got)
+	}
+	if got := render(paginate.New(30, 10, 2).WithWindow(math.MaxInt, math.MaxInt/4).Window); got != "1 [2] 3" {
+		t.Errorf("huge edges and around: %q", got)
+	}
+}
