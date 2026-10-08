@@ -68,24 +68,37 @@ func Path(first, pattern string) Linker {
 }
 
 // PathNamed links a listing through its pages' names, in the render's locale:
-// first is the page serving page 1, rest the page whose path carries {n}. Both
-// names are checked here, so a misspelled one is an error rather than an empty
-// link later.
+// first is the page serving page 1, rest the page whose path carries {n}. The
+// request's other path parameters go into both addresses, so a listing like
+// /tag/{tag} with /tag/{tag}/page/{n} links within its own tag. Both names are
+// checked here, so a misspelled one is an error rather than an empty link later.
 func PathNamed(rc *collage.RenderContext, first, rest string) (Linker, error) {
-	firstURL, err := rc.URL(first, nil)
+	params := func(n int) map[string]string {
+		out := make(map[string]string, len(rc.PathParams)+1)
+		for k, v := range rc.PathParams {
+			if k != "n" {
+				out[k] = v
+			}
+		}
+		if n > 1 {
+			out["n"] = strconv.Itoa(n)
+		}
+		return out
+	}
+	firstURL, err := rc.URL(first, params(1))
 	if err != nil {
 		return Linker{}, fmt.Errorf("paginate: page %q: %w", first, err)
 	}
-	if _, err := rc.URL(rest, map[string]string{"n": "2"}); err != nil {
+	if _, err := rc.URL(rest, params(2)); err != nil {
 		return Linker{}, fmt.Errorf("paginate: page %q: %w", rest, err)
 	}
 	return Linker{url: func(n int) string {
 		if n <= 1 {
 			return firstURL
 		}
-		u, err := rc.URL(rest, map[string]string{"n": strconv.Itoa(n)})
+		u, err := rc.URL(rest, params(n))
 		if err != nil {
-			return "" // unreachable: the name resolved for n=2 above
+			return "" // unreachable: the same parameters resolved for n=2 above
 		}
 		return u
 	}}, nil

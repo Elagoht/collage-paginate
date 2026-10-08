@@ -201,3 +201,52 @@ func TestApp_QueryCacheParams(t *testing.T) {
 		}
 	}
 }
+
+// A listing whose path has its own parameters — /tag/{tag} and
+// /tag/{tag}/page/{n} — links its pages within the same tag.
+func TestApp_PathNamedCarriesOtherParams(t *testing.T) {
+	app, err := collage.New(&collage.Config{
+		Server: collage.ServerConfig{Host: "localhost", Port: 3000},
+		Template: collage.TemplateConfig{FS: fstest.MapFS{
+			"t/list.html": {Data: []byte(`<p>next {{.Links.Next}} prev {{.Links.Prev}}</p>`)},
+		}, Root: "t"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	const total = 25
+	last := paginate.New(total, perPage, 1).Last
+	data := func(fromPath bool) collage.Data {
+		return collage.DataHandler(func(_ context.Context, rc *collage.RenderContext) (listing, []string, error) {
+			n := 1
+			if fromPath {
+				var err error
+				if n, err = paginate.FromPath(rc, "n", last); err != nil {
+					return listing{}, nil, err
+				}
+			}
+			links, err := paginate.PathNamed(rc, "tag", "tag-page")
+			if err != nil {
+				return listing{}, nil, err
+			}
+			return listing{Current: n, Links: links.For(paginate.New(total, perPage, n))}, nil, nil
+		})
+	}
+	for _, page := range []*collage.Page{
+		collage.NewPage("tag").WithContent(collage.NewFragment("tag-list", "list.html").WithData(data(false)).Required().Build()).
+			WithPath("en", "/tag/{tag}").Build(),
+		collage.NewPage("tag-page").WithContent(collage.NewFragment("tag-page-list", "list.html").WithData(data(true)).Required().Build()).
+			WithPath("en", "/tag/{tag}/page/{n}").Build(),
+	} {
+		if err := app.RegisterPage(page); err != nil {
+			t.Fatal(err)
+		}
+	}
+	h := app.Handler()
+	if code, body := get(t, h, "/tag/go"); code != http.StatusOK || !strings.Contains(body, "next /tag/go/page/2 prev </p>") {
+		t.Errorf("/tag/go = %d %q", code, body)
+	}
+	if code, body := get(t, h, "/tag/go/page/2"); code != http.StatusOK || !strings.Contains(body, "next /tag/go/page/3 prev /tag/go</p>") {
+		t.Errorf("/tag/go/page/2 = %d %q", code, body)
+	}
+}
