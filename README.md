@@ -10,7 +10,7 @@ Pagination helpers for [collage](https://github.com/Elagoht/collage):
 It is a **library, not a plugin**. There is nothing to register and nothing to
 configure. A page uses it in its data handler and its template.
 
-Requires collage v0.57.0 or later.
+Requires collage v0.60.0 or later.
 
 ```sh
 go get github.com/Elagoht/collage-paginate

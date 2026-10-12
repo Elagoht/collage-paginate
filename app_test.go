@@ -47,7 +47,7 @@ func blogApp(t *testing.T, total int, locales collage.LocaleConfig) *collage.App
 	}
 	last := paginate.New(total, perPage, 1).Last
 	handler := func(fromPath bool) collage.Data {
-		return collage.DataHandler(func(_ context.Context, rc *collage.RenderContext) (listing, []string, error) {
+		return collage.LoadTagged(func(_ context.Context, rc *collage.RenderContext) (listing, []string, error) {
 			n := 1
 			if fromPath {
 				var err error
@@ -69,7 +69,12 @@ func blogApp(t *testing.T, total int, locales collage.LocaleConfig) *collage.App
 		if def == "" {
 			def = "en"
 		}
+		seen := map[string]bool{}
 		for _, locale := range append([]string{def}, locales.Supported...) {
+			if seen[locale] {
+				continue
+			}
+			seen[locale] = true
 			if fromPath {
 				b = b.WithPath(locale, "/blog/page/{n}")
 			} else {
@@ -118,11 +123,7 @@ func TestApp_PageOneHasOneURL(t *testing.T) {
 func TestApp_StaticExport(t *testing.T) {
 	app := blogApp(t, 25, collage.LocaleConfig{})
 	out := t.TempDir()
-	builder, err := collage.NewBuilder(app, collage.BuildOptions{OutDir: out})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := builder.Build(context.Background()); err != nil {
+	if _, err := collage.Build(context.Background(), app, collage.BuildOptions{OutDir: out}); err != nil {
 		t.Fatalf("Build: %v", err)
 	}
 	for file, want := range map[string]bool{
@@ -179,7 +180,7 @@ func TestApp_QueryCacheParams(t *testing.T) {
 	}
 	const total = 50
 	last := paginate.New(total, perPage, 1).Last
-	data := collage.DataHandler(func(_ context.Context, rc *collage.RenderContext) (listing, []string, error) {
+	data := collage.LoadTagged(func(_ context.Context, rc *collage.RenderContext) (listing, []string, error) {
 		n := paginate.FromQuery(rc, "page", last)
 		return listing{Current: n, Links: paginate.Query(rc, "page").For(paginate.New(total, perPage, n))}, nil, nil
 	})
@@ -217,7 +218,7 @@ func TestApp_PathNamedCarriesOtherParams(t *testing.T) {
 	const total = 25
 	last := paginate.New(total, perPage, 1).Last
 	data := func(fromPath bool) collage.Data {
-		return collage.DataHandler(func(_ context.Context, rc *collage.RenderContext) (listing, []string, error) {
+		return collage.LoadTagged(func(_ context.Context, rc *collage.RenderContext) (listing, []string, error) {
 			n := 1
 			if fromPath {
 				var err error
