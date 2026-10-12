@@ -51,7 +51,7 @@ func blogApp(t *testing.T, total int, locales collage.LocaleConfig) *collage.App
 			n := 1
 			if fromPath {
 				var err error
-				if n, err = paginate.FromPath(rc, "n", last); err != nil {
+				if n, err = paginate.FromPath(rc, last); err != nil {
 					return listing{}, nil, err
 				}
 			}
@@ -222,7 +222,7 @@ func TestApp_PathNamedCarriesOtherParams(t *testing.T) {
 			n := 1
 			if fromPath {
 				var err error
-				if n, err = paginate.FromPath(rc, "n", last); err != nil {
+				if n, err = paginate.FromPath(rc, last); err != nil {
 					return listing{}, nil, err
 				}
 			}

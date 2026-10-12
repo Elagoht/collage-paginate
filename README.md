@@ -10,7 +10,7 @@ Pagination helpers for [collage](https://github.com/Elagoht/collage):
 It is a **library, not a plugin**. There is nothing to register and nothing to
 configure. A page uses it in its data handler and its template.
 
-Requires collage v0.60.0 or later.
+Requires collage v0.61.0 or later.
 
 ```sh
 go get github.com/Elagoht/collage-paginate
@@ -54,7 +54,7 @@ func listing(ctx context.Context, rc *collage.RenderContext) (BlogList, []string
 	last := paginate.New(total, perPage, 1).Last
 	n := 1
 	if rc.Param("n") != "" {
-		if n, err = paginate.FromPath(rc, "n", last); err != nil {
+		if n, err = paginate.FromPath(rc, last); err != nil {
 			return BlogList{}, nil, err // wraps collage.ErrNotFound: a 404
 		}
 	}
@@ -154,3 +154,16 @@ if l := links.For(p); l.Next != "" {
   without a known total are out of scope.
 - **One page can't serve both `/blog` and `/blog/page/{n}`.** A page has one
   pattern per locale, so the listing is two pages.
+
+## Changes
+
+### Changed in v0.2.0
+
+| Was | Now |
+| --- | --- |
+| `FromPath(rc, param, last)` | `FromPath(rc, last)`: it reads the path parameter `n`, the one `PathNamed` and `StaticParams` write |
+| `paginate.Version` | removed; read the version from `go.mod` or `debug.ReadBuildInfo` |
+
+- A zero `Linker` (the one `PathNamed` returns beside its error) gives `""` from
+  `URL` and empty links from `For`, where it used to panic.
+- Requires collage v0.61.0.

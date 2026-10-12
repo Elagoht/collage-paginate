@@ -97,12 +97,12 @@ func TestQuery_KeepsOthers(t *testing.T) {
 }
 
 func TestFromPath_Table(t *testing.T) {
-	n, err := paginate.FromPath(rcFor("/blog/page/2", map[string]string{"n": "2"}), "n", 5)
+	n, err := paginate.FromPath(rcFor("/blog/page/2", map[string]string{"n": "2"}), 5)
 	if err != nil || n != 2 {
 		t.Errorf(`"2": %d, %v`, n, err)
 	}
 	for _, raw := range []string{"1", "01", "0", "-2", "+2", "2a", "", "99999999999999999999", "6", " 2", "２"} {
-		_, err := paginate.FromPath(rcFor("/x", map[string]string{"n": raw}), "n", 5)
+		_, err := paginate.FromPath(rcFor("/x", map[string]string{"n": raw}), 5)
 		if !errors.Is(err, collage.ErrNotFound) {
 			t.Errorf("%q: %v, want ErrNotFound", raw, err)
 		}
@@ -137,6 +137,24 @@ func TestQuery_EscapedPath(t *testing.T) {
 	} {
 		if got := paginate.Query(rcFor(target, nil), "page").URL(2); got != want {
 			t.Errorf("%s: URL(2) = %q, want %q", target, got, want)
+		}
+	}
+}
+
+// A zero Linker, which PathNamed returns beside its error, gives empty links
+// instead of panicking on its nil URL function.
+func TestLinker_ZeroIsEmpty(t *testing.T) {
+	var l paginate.Linker
+	if got := l.URL(2); got != "" {
+		t.Errorf("zero Linker URL(2) = %q, want empty", got)
+	}
+	links := l.For(paginate.New(30, 10, 2))
+	if links.Prev != "" || links.Next != "" {
+		t.Errorf("zero Linker For: prev %q next %q, want empty", links.Prev, links.Next)
+	}
+	for _, s := range links.Window {
+		if s.URL != "" {
+			t.Errorf("zero Linker window slot %+v has a URL", s)
 		}
 	}
 }

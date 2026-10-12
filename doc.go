@@ -5,6 +5,3 @@
 // It is a library, not a plugin: nothing is registered, and there is nothing to
 // configure. A page uses it in its data handler and template.
 package paginate
-
-// Version is this library's release.
-const Version = "0.1.1"

@@ -27,12 +27,13 @@ func StaticParams(count func(ctx context.Context, locale string) (int, error), p
 	}
 }
 
-// FromPath reads a path-paged page number from the path parameter param. It
+// FromPath reads a path-paged page number from the path parameter "n", the one
+// PathNamed and StaticParams write. It
 // accepts only 2…last, spelled the one canonical way: "1" (page 1 is the
 // listing's own path), a leading zero, a sign, anything but ASCII digits and
 // any number out of range are not found, so every page has one address.
-func FromPath(rc *collage.RenderContext, param string, last int) (int, error) {
-	raw := rc.Param(param)
+func FromPath(rc *collage.RenderContext, last int) (int, error) {
+	raw := rc.Param("n")
 	n, ok := parse(raw)
 	if !ok || n < 2 || n > last {
 		return 0, fmt.Errorf("%w: page %q", collage.ErrNotFound, raw)

@@ -15,8 +15,14 @@ type Linker struct {
 	url func(n int) string
 }
 
-// URL returns page n's address.
-func (l Linker) URL(n int) string { return l.url(n) }
+// URL returns page n's address; a zero Linker, such as the one PathNamed
+// returns beside its error, has none and returns "".
+func (l Linker) URL(n int) string {
+	if l.url == nil {
+		return ""
+	}
+	return l.url(n)
+}
 
 // LinkSlot is a Window slot with its address; a gap has none.
 type LinkSlot struct {
@@ -33,19 +39,19 @@ type Links struct {
 	Window     []LinkSlot
 }
 
-// For returns p's links.
+// For returns p's links; a zero Linker's are all "".
 func (l Linker) For(p Pager) Links {
 	links := Links{Window: make([]LinkSlot, len(p.Window))}
 	if p.Prev > 0 {
-		links.Prev = l.url(p.Prev)
+		links.Prev = l.URL(p.Prev)
 	}
 	if p.Next > 0 {
-		links.Next = l.url(p.Next)
+		links.Next = l.URL(p.Next)
 	}
 	for i, s := range p.Window {
 		links.Window[i] = LinkSlot{Slot: s}
 		if !s.Gap {
-			links.Window[i].URL = l.url(s.N)
+			links.Window[i].URL = l.URL(s.N)
 		}
 	}
 	return links
