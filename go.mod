@@ -6,4 +6,4 @@ module github.com/Elagoht/collage-paginate
 
 go 1.26
 
-require github.com/Elagoht/collage v0.61.0
+require github.com/Elagoht/collage v0.61.2

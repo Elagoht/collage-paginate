@@ -15,6 +15,7 @@ import (
 
 	"github.com/Elagoht/collage-paginate"
 	"github.com/Elagoht/collage/pkg/collage"
+	"github.com/Elagoht/collage/pkg/collagetest"
 )
 
 // listing is what a paged fragment renders.
@@ -35,16 +36,6 @@ func count(total int) func(context.Context, string) (int, error) {
 // right.
 func blogApp(t *testing.T, total int, locales collage.LocaleConfig) *collage.App {
 	t.Helper()
-	app, err := collage.New(&collage.Config{
-		Server: collage.ServerConfig{Host: "localhost", Port: 3000},
-		Template: collage.TemplateConfig{FS: fstest.MapFS{
-			"t/list.html": {Data: []byte(`<p>page {{.Current}} next {{.Links.Next}} prev {{.Links.Prev}}</p>`)},
-		}, Root: "t"},
-		Locale: locales,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
 	last := paginate.New(total, perPage, 1).Last
 	handler := func(fromPath bool) collage.Data {
 		return collage.LoadTagged(func(_ context.Context, rc *collage.RenderContext) (listing, []string, error) {
@@ -83,13 +74,15 @@ func blogApp(t *testing.T, total int, locales collage.LocaleConfig) *collage.App
 		}
 		return b
 	}
-	if err := app.RegisterPage(page("blog", false).Static().Build()); err != nil {
-		t.Fatal(err)
-	}
-	if err := app.RegisterPage(page("blog-page", true).WithStaticParams(paginate.StaticParams(count(total), perPage)).Static().Build()); err != nil {
-		t.Fatal(err)
-	}
-	return app
+	return collagetest.NewSite(t,
+		collagetest.WithTemplates(map[string]string{"list.html": `<p>page {{.Current}} next {{.Links.Next}} prev {{.Links.Prev}}</p>`}),
+		collagetest.WithConfig(func(c *collage.Config) { c.Locale = locales }),
+		collagetest.WithoutHome(),
+		collagetest.WithRegister(
+			page("blog", false).Static().Build(),
+			page("blog-page", true).WithStaticParams(paginate.StaticParams(count(total), perPage)).Static().Build(),
+		),
+	).App
 }
 
 func get(t *testing.T, h http.Handler, path string) (int, string) {
